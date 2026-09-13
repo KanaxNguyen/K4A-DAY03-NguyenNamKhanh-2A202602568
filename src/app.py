@@ -199,7 +199,7 @@ def main():
         print('Nhập yêu cầu; exit để thoát, /reset để xóa lịch sử (booking vẫn giữ trong phiên).')
         while True:
             try:
-                query = input('Bạn: ').strip()
+                query = input('👤 Người dùng hỏi: ').strip()
                 if query.lower() in ('exit', 'quit'):
                     break
                 if not query:
