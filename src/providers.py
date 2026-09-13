@@ -6,6 +6,8 @@ Hỗ trợ Native Tool Calling và chuyển đổi linh hoạt qua biến môi t
 import os
 import sys
 import json
+import re
+import time
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 
@@ -20,7 +22,7 @@ load_dotenv()
 class BaseLLMProvider:
     """Interface cơ sở cho các LLM Provider hỗ trợ Native Tool Calling"""
     def generate(self, prompt: str, system_prompt: str = "") -> str:
-        raise NotImplementedError
+        return self.generate_with_tools(prompt, [], system_prompt)['content']
 
     def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
         raise NotImplementedError
@@ -35,29 +37,92 @@ class MockOfflineProvider(BaseLLMProvider):
         return f"[Mock Chatbot Response]: Xin chào! Tôi đã nhận được câu hỏi '{prompt}'. (Chế độ Chatbot không có Tool tra cứu dữ liệu thời gian thực)."
 
     def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
+        if isinstance(prompt, list):
+            messages = prompt
+            user_parts = [m['content'] for m in messages if m['role'] == 'user']
+            prompt = '\n'.join(user_parts)
+            if messages and messages[-1]['role'] == 'tool':
+                last = messages[-1]
+                prompt += '\nObservation từ công cụ ' + last['name'] + ': ' + json.dumps(last['observation'], ensure_ascii=False)
         prompt_lower = prompt.lower()
-        
-        # Mô phỏng nhận diện intent gọi Tool
-        if "sv2026001" in prompt_lower and "đặt lịch" in prompt_lower:
-            return {
-                "type": "tool_call",
-                "tool_name": "schedule_appointment",
-                "arguments": {"student_id": "SV2026001", "datetime_str": "14:00 15/09/2026", "advisor_name": "PGS.TS Nguyễn Văn A"},
-                "thought": "Người dùng yêu cầu đặt lịch hẹn tư vấn cho sinh viên SV2026001. Tôi sẽ gọi tool schedule_appointment."
-            }
-        elif "sv2026001" in prompt_lower or "tra cứu" in prompt_lower:
-            return {
-                "type": "tool_call",
-                "tool_name": "academic_query",
-                "arguments": {"student_id": "SV2026001"},
-                "thought": "Người dùng muốn tra cứu thông tin học vụ của sinh viên SV2026001. Tôi sẽ gọi tool academic_query."
-            }
-        else:
+        requested_slot = {}
+        if '14:00' in prompt and '15/09/2026' in prompt:
+            requested_slot = {'start_time': '14:00 15/09/2026', 'duration_minutes': 60}
+        observation = {}
+        if 'Observation từ công cụ ' in prompt:
+            tail = prompt.rsplit('Observation từ công cụ ', 1)[1]
+            observation = json.JSONDecoder().raw_decode(tail[tail.index('{'):])[0]
+
+        if "observation" not in prompt_lower and any(keyword in prompt_lower for keyword in ["giới thiệu", "hỗ trợ gì", "cách sử dụng"]):
             return {
                 "type": "text",
-                "content": f"[Mock Agent Response]: Xin chào! Quy chế học vụ VinUni yêu cầu sinh viên tích lũy tối thiểu 120 tín chỉ và duy trì GPA trên 2.0 để tốt nghiệp.",
-                "thought": "Câu hỏi chung về quy chế học vụ, trả lời trực tiếp không cần gọi Tool."
+                "content": "[Mock Agent Response]: Tôi có thể tra cứu trạm sạc còn cổng, đề xuất trạm phù hợp và hỗ trợ đặt chỗ sạc.",
+                "thought": "Câu hỏi thông tin chung, trả lời trực tiếp không cần gọi Tool."
             }
+
+        # Observation của lượt trước: quyết định bước tiếp theo dựa trên dữ liệu Tool thực tế.
+        if "observation" in prompt_lower:
+            if '"booking_id"' in prompt_lower:
+                return {
+                    "type": "text",
+                    "content": observation.get('message', '') + ' Mã đặt chỗ: ' + observation.get('booking', {}).get('booking_id', ''),
+                    "thought": "Tool đã tạo booking thành công, tôi xác nhận kết quả cho người dùng."
+                }
+            if observation.get('status') not in (None, 'SUCCESS'):
+                if observation.get('status') == 'UNAVAILABLE' and 'Observation từ công cụ reserve_charging_slot:' in prompt:
+                    return {'type': 'tool_call', 'tool_name': 'check_charging_availability',
+                            'arguments': {'location': 'VinUni Ocean Park', 'connector_type': 'CCS2', **requested_slot},
+                            'decision_summary': 'Đặt chỗ vừa thất bại vì hết cổng; tra cứu lại trước khi chọn trạm khác (Mock fixture).'}
+                return {
+                    "type": "text",
+                    "content": observation.get('message', 'Không thể hoàn tất yêu cầu.'),
+                    "thought": "Observation không cho phép đặt chỗ, tôi trả lời dựa trên lỗi Tool."
+                }
+            if '"status": "success"' in prompt_lower and "recommended_station" in prompt_lower and "đặt" in prompt_lower:
+                return {
+                    "type": "tool_call",
+                    "tool_name": "reserve_charging_slot",
+                    "arguments": {
+                        "station_id": observation['recommended_station']['station_id'], "vehicle_id": "30H-123.45",
+                        "start_time": "14:00 15/09/2026", "duration_minutes": 60, "connector_type": "CCS2"
+                    },
+                    "thought": "Mock chọn trạm được đề xuất trong Observation để đặt chỗ theo fixture."
+                }
+            if '"status": "success"' in prompt_lower:
+                return {
+                    "type": "text",
+                    "content": "Tôi đã tìm thấy trạm sạc còn cổng phù hợp. Chi tiết trạm và mức tải nằm trong kết quả tra cứu.",
+                    "thought": "Observation thành công và người dùng chỉ yêu cầu tra cứu, nên tôi tổng hợp kết quả."
+                }
+        if "vf-khongtontai" in prompt_lower:
+            return {
+                "type": "tool_call",
+                "tool_name": "check_charging_availability",
+                "arguments": {"location": "VinUni Ocean Park", "connector_type": "CCS2", "station_id": "VF-KHONGTONTAI"},
+                "thought": "Tôi cần xác minh mã trạm mà người dùng nêu trước khi có thể đặt chỗ."
+            }
+        if "đặt chỗ" in prompt_lower and "vf-op01" in prompt_lower:
+            return {
+                "type": "tool_call",
+                "tool_name": "reserve_charging_slot",
+                "arguments": {
+                    "station_id": "VF-OP01", "vehicle_id": "30H-123.45",
+                    "start_time": "14:00 15/09/2026", "duration_minutes": 60, "connector_type": "CCS2"
+                },
+                "thought": "Người dùng đã cung cấp trạm, xe, khung giờ và loại đầu sạc; tôi sẽ tạo đặt chỗ."
+            }
+        if any(keyword in prompt_lower for keyword in ["trạm sạc", "cổng ccs2", "cần sạc", "khả dụng"]):
+            return {
+                "type": "tool_call",
+                "tool_name": "check_charging_availability",
+                "arguments": {"location": "VinUni Ocean Park", "connector_type": "CCS2", **requested_slot},
+                "thought": "Tôi cần tra cứu số cổng CCS2 còn trống tại khu vực được hỏi."
+            }
+        return {
+            "type": "text",
+            "content": "[Mock Agent Response]: Tôi có thể tra cứu trạm sạc còn cổng, đề xuất trạm phù hợp và hỗ trợ đặt chỗ sạc.",
+            "thought": "Câu hỏi thông tin chung, trả lời trực tiếp không cần gọi Tool."
+        }
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -66,73 +131,9 @@ class GeminiProvider(BaseLLMProvider):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model_name = model or os.getenv("LLM_MODEL") or "gemini-2.5-flash"
 
-    def generate(self, prompt: str, system_prompt: str = "") -> str:
-        if not self.api_key or self.api_key == "your_gemini_api_key_here":
-            return "[Gemini Error]: Chưa cấu hình GEMINI_API_KEY trong file .env! Đang sử dụng chế độ Mock."
-        try:
-            from google import genai
-            client = genai.Client(api_key=self.api_key)
-            contents = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-            response = client.models.generate_content(model=self.model_name, contents=contents)
-            return response.text
-        except Exception as e:
-            return f"[Gemini Exception]: {str(e)}"
-
-    def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
-        if not self.api_key or self.api_key == "your_gemini_api_key_here":
-            print("ℹ️ [Gemini Provider]: Chưa tìm thấy GEMINI_API_KEY hợp lệ. Tự động chuyển sang Mock Offline.")
-            return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
-        
-        try:
-            from google import genai
-            from google.genai import types
-
-            client = genai.Client(api_key=self.api_key)
-            
-            # Chuẩn hóa function declarations cho Gemini SDK
-            function_declarations = []
-            for tool in tools_schema:
-                # Bỏ qua các tool schema chưa được định nghĩa hoàn chỉnh
-                if not tool.get("name") or not tool.get("parameters"):
-                    continue
-                function_declarations.append({
-                    "name": tool["name"],
-                    "description": tool.get("description", ""),
-                    "parameters": tool.get("parameters", {})
-                })
-
-            config = types.GenerateContentConfig(
-                system_instruction=system_prompt if system_prompt else None,
-                tools=[{"function_declarations": function_declarations}] if function_declarations else None,
-                temperature=0.2
-            )
-
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config
-            )
-
-            # Kiểm tra xem Gemini có trả về Tool Call không
-            if response.function_calls:
-                call = response.function_calls[0]
-                args = dict(call.args) if hasattr(call, 'args') and call.args else {}
-                return {
-                    "type": "tool_call",
-                    "tool_name": call.name,
-                    "arguments": args,
-                    "thought": f"Gemini quyết định gọi công cụ '{call.name}' với tham số: {json.dumps(args, ensure_ascii=False)}"
-                }
-            else:
-                return {
-                    "type": "text",
-                    "content": response.text or "",
-                    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ)."
-                }
-
-        except Exception as e:
-            print(f"⚠️ [Gemini API Warning]: Không thể kết nối live API ({str(e)}). Tự động fallback về Mock.")
-            return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
+    def generate_with_tools(self, prompt, tools_schema, system_prompt=""):
+        from native_transport import gemini_generate
+        return gemini_generate(self, prompt, tools_schema, system_prompt)
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -141,74 +142,9 @@ class OpenAIProvider(BaseLLMProvider):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model_name = model or os.getenv("LLM_MODEL") or "gpt-4o-mini"
 
-    def generate(self, prompt: str, system_prompt: str = "") -> str:
-        if not self.api_key or self.api_key == "your_openai_api_key_here":
-            return "[OpenAI Error]: Chưa cấu hình OPENAI_API_KEY trong file .env! Đang sử dụng chế độ Mock."
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.api_key)
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-            response = client.chat.completions.create(model=self.model_name, messages=messages)
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            return f"[OpenAI Exception]: {str(e)}"
-
-    def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
-        if not self.api_key or self.api_key == "your_openai_api_key_here":
-            print("ℹ️ [OpenAI Provider]: Chưa tìm thấy OPENAI_API_KEY hợp lệ. Tự động chuyển sang Mock Offline.")
-            return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
-
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.api_key)
-
-            tools = []
-            for tool in tools_schema:
-                if not tool.get("name"):
-                    continue
-                tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": tool["name"],
-                        "description": tool.get("description", ""),
-                        "parameters": tool.get("parameters", {})
-                    }
-                })
-
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-
-            response = client.chat.completions.create(
-                model=self.model_name,
-                messages=messages,
-                tools=tools if tools else None,
-                tool_choice="auto" if tools else None
-            )
-
-            msg = response.choices[0].message
-            if msg.tool_calls:
-                call = msg.tool_calls[0]
-                args = json.loads(call.function.arguments) if call.function.arguments else {}
-                return {
-                    "type": "tool_call",
-                    "tool_name": call.function.name,
-                    "arguments": args,
-                    "thought": f"OpenAI quyết định gọi công cụ '{call.function.name}' với tham số: {json.dumps(args, ensure_ascii=False)}"
-                }
-            else:
-                return {
-                    "type": "text",
-                    "content": msg.content or "",
-                    "thought": "OpenAI phản hồi trực tiếp bằng văn bản (không cần gọi công cụ)."
-                }
-        except Exception as e:
-            print(f"⚠️ [OpenAI API Warning]: Không thể kết nối live API ({str(e)}). Tự động fallback về Mock.")
-            return MockOfflineProvider().generate_with_tools(prompt, tools_schema, system_prompt)
+    def generate_with_tools(self, prompt, tools_schema, system_prompt=""):
+        from native_transport import openai_generate
+        return openai_generate(self, prompt, tools_schema, system_prompt)
 
 
 def get_llm_provider() -> BaseLLMProvider:
@@ -220,14 +156,46 @@ def get_llm_provider() -> BaseLLMProvider:
         if key and key != "your_gemini_api_key_here":
             return GeminiProvider()
         else:
-            return MockOfflineProvider()
+            raise RuntimeError("Thiếu GEMINI_API_KEY; dùng LLM_PROVIDER=mock cho offline.")
     elif provider_type == "openai":
         key = os.getenv("OPENAI_API_KEY")
         if key and key != "your_openai_api_key_here":
             return OpenAIProvider()
         else:
-            return MockOfflineProvider()
+            raise RuntimeError("Thiếu OPENAI_API_KEY; dùng LLM_PROVIDER=mock cho offline.")
     elif provider_type == "mock":
         return MockOfflineProvider()
     else:
-        return MockOfflineProvider()
+        raise RuntimeError("LLM_PROVIDER phải là mock, gemini hoặc openai.")
+
+
+def call_with_retry(provider, prompt, schema, system_prompt, on_retry=None, max_retries=3):
+    """Bounded rate-limit retries; never replace live evidence with Mock."""
+    llm_ms, wait_ms = 0.0, 0.0
+    for attempt in range(max_retries + 1):
+        started = time.perf_counter()
+        try:
+            result = provider.generate_with_tools(prompt, schema, system_prompt=system_prompt)
+            llm_ms += (time.perf_counter() - started) * 1000
+            result['retry_count'] = attempt
+            result['llm_latency_ms'] = round(llm_ms, 3)
+            result['retry_wait_ms'] = round(wait_ms, 3)
+            return result
+        except Exception as error:
+            llm_ms += (time.perf_counter() - started) * 1000
+            message = str(error)
+            rate_limited = '429' in message or 'RESOURCE_EXHAUSTED' in message
+            if not rate_limited or attempt == max_retries:
+                failure = RuntimeError(f"{type(error).__name__}: API thất bại; rate_limited={rate_limited}; không fallback Mock.")
+                failure.metrics = {'llm_latency_ms': round(llm_ms, 3), 'retry_wait_ms': round(wait_ms, 3), 'retry_count': attempt}
+                raise failure from None
+            match = re.search(r'(?:retry in |retryDelay[^0-9]*)([0-9.]+)', message, re.I)
+            delay = min(120, float(match.group(1)) + 2) if match else 62
+            print(f"[RETRY] API 429: chờ {delay:.0f}s, lần {attempt + 1}/{max_retries}.", flush=True)
+            waiting = time.perf_counter()
+            time.sleep(delay)
+            actual_wait = (time.perf_counter() - waiting) * 1000
+            wait_ms += actual_wait
+            if on_retry:
+                on_retry({'retry_number': attempt + 1, 'status_code': 429,
+                          'requested_wait_ms': delay * 1000, 'retry_wait_ms': round(actual_wait, 3)})

@@ -1,118 +1,206 @@
-"""
-🛠️ TOOL DEFINITIONS & EXECUTION BACKEND
-Mã nguồn chứa danh sách Tool Schemas (JSON Schema) và Execution Layer phục vụ cho MCP Server.
-"""
+"""Công cụ MCP và lớp dữ liệu mô phỏng cho Trợ lý Trạm Sạc VinFast."""
 
 import json
-from typing import Dict, Any
+import copy
+import re
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
 
-# ==============================================================================
-# 1. KHAI BÁO TOOL SCHEMAS CHUẨN NATIVE JSON SCHEMA (TASK 1.2)
-# ==============================================================================
 
 TOOLS_SCHEMA = [
-    # Tool 1: Đã được định nghĩa mẫu sẵn cho Học viên tham khảo
     {
-        "name": "academic_query",
-        "description": "Tra cứu hồ sơ và thông tin học vụ của sinh viên VinUni bằng mã sinh viên.",
+        "name": "check_charging_availability",
+        "description": "Tra cứu khả dụng của các trạm sạc VinFast theo khu vực, loại đầu sạc hoặc mã trạm.",
         "parameters": {
             "type": "object",
             "properties": {
-                "student_id": {
-                    "type": "string",
-                    "description": "Mã sinh viên cần tra cứu (ví dụ: 'SV2026001')"
-                }
+                "location": {"type": "string", "minLength": 2, "description": "Khu vực cần tìm trạm, ví dụ: VinUni Ocean Park."},
+                "connector_type": {"type": "string", "enum": ["CCS2", "Type 2"], "description": "Loại đầu sạc yêu cầu."},
+                "station_id": {"type": "string", "pattern": "^VF-[A-Z0-9-]+$", "description": "Mã trạm nếu đã biết, ví dụ: VF-OP01."},
+                "start_time": {"type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d [0-3]\\d/[01]\\d/\\d{4}$", "description": "Tùy chọn: giờ bắt đầu HH:MM DD/MM/YYYY."},
+                "duration_minutes": {"type": "integer", "minimum": 1, "maximum": 240, "description": "Tùy chọn: thời lượng cần sạc, 1–240 phút."}
             },
-            "required": ["student_id"]
+            "required": ["connector_type"],
+            "additionalProperties": False
         }
     },
-    
-    # --------------------------------------------------------------------------
-    # TODO 1.2: HỌC VIÊN HOÀN THIỆN TOOL SCHEMA CHO 'schedule_appointment'
-    # 🎯 YÊU CẦU THIẾT KẾ SCHEMA (JSON SCHEMA STANDARD):
-    # 1. Tool dùng để đặt lịch hẹn tư vấn học vụ với Cố vấn học tập VinUni.
-    # 2. Thiết kế các tham số (properties) để LLM trích xuất:
-    #    - student_id (string): Mã sinh viên cần đặt lịch (ví dụ: 'SV2026001')
-    #    - datetime_str (string): Thời gian hẹn (ví dụ: '14:00 15/09/2026')
-    #    - advisor_name (string): Tên cố vấn học tập
-    # 3. Khai báo danh sách các trường bắt buộc (required).
-    # --------------------------------------------------------------------------
     {
-        "name": "schedule_appointment",
-        "description": "Đặt lịch hẹn tư vấn học vụ với Cố vấn học tập VinUni.",
+        "name": "reserve_charging_slot",
+        "description": "Đặt một khung giờ sạc tại trạm VinFast sau khi đã xác nhận trạm còn cổng phù hợp.",
         "parameters": {
             "type": "object",
             "properties": {
-                # TODO 1.2: Khai báo các thuộc tính tham số cho Tool tại đây...
+                "station_id": {"type": "string", "pattern": "^VF-[A-Z0-9-]+$", "description": "Mã trạm sạc cần đặt, ví dụ: VF-OP01."},
+                "vehicle_id": {"type": "string", "minLength": 3, "maxLength": 32, "description": "Biển số hoặc mã định danh xe."},
+                "start_time": {"type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d [0-3]\\d/[01]\\d/\\d{4}$", "description": "Thời điểm bắt đầu, HH:MM DD/MM/YYYY."},
+                "duration_minutes": {"type": "integer", "minimum": 1, "maximum": 240, "description": "Thời lượng đặt chỗ, 1–240 phút."},
+                "connector_type": {"type": "string", "enum": ["CCS2", "Type 2"], "description": "Loại đầu sạc cần dùng."}
             },
-            "required": [] # TODO 1.2: Khai báo danh sách các trường bắt buộc tại đây...
+            "required": ["station_id", "vehicle_id", "start_time", "duration_minutes", "connector_type"],
+            "additionalProperties": False
         }
     }
 ]
 
-# ==============================================================================
-# 2. MÔ PHỎNG DỮ LIỆU & HÀM THỰC THI TOOL (EXECUTION LAYER)
-# ==============================================================================
 
-MOCK_DATABASE = {
-    "SV2026001": {
-        "full_name": "Nguyễn Văn An",
-        "class": "AI-K4",
-        "gpa": 3.85,
-        "email": "an.nv@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "PGS.TS Nguyễn Văn A"
+MOCK_STATIONS = {
+    "VF-OP01": {
+        "station_id": "VF-OP01", "name": "Trạm VinFast Ocean Park A", "location": "VinUni Ocean Park",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 2, "load_percent": 55},
+            "Type 2": {"total_ports": 2, "available_ports": 1, "load_percent": 40}
+        }
     },
-    "SV2026002": {
-        "full_name": "Trần Thị Bình",
-        "class": "AI-K4",
-        "gpa": 3.60,
-        "email": "binh.tt@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "TS. Lê Thị B"
+    "VF-OP02": {
+        "station_id": "VF-OP02", "name": "Trạm VinFast Ocean Park B", "location": "VinUni Ocean Park",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 1, "load_percent": 70},
+            "Type 2": {"total_ports": 2, "available_ports": 0, "load_percent": 100}
+        }
     }
 }
 
+RESERVATIONS = []
+INITIAL_STATIONS = copy.deepcopy(MOCK_STATIONS)
 
-def execute_academic_query(student_id: str) -> str:
-    """Thực thi tra cứu học vụ theo mã sinh viên"""
-    student = MOCK_DATABASE.get(student_id.strip().upper())
-    if student:
+
+def reset_demo_state():
+    MOCK_STATIONS.clear()
+    MOCK_STATIONS.update(copy.deepcopy(INITIAL_STATIONS))
+    RESERVATIONS.clear()
+
+
+def normalize_location(value):
+    compact = re.sub(r'\s+', '', value.lower())
+    if compact in {'oceanpark', 'oceanpark1', 'vinunioceanpark', 'vinhomes ocean park'.replace(' ', '')}:
+        return 'vinuni ocean park'
+    return value.strip().lower()
+
+
+def _normalize_connector(connector_type: str) -> str:
+    return connector_type.strip().upper().replace("TYPE 2", "Type 2")
+
+
+def _parse_slot(start_time: str, duration_minutes: int):
+    start = datetime.strptime(start_time, "%H:%M %d/%m/%Y")
+    return start, start + timedelta(minutes=duration_minutes)
+
+
+def _overlapping_reservations(station_id: str, connector_type: str, start_time: str, duration_minutes: int):
+    requested_start, requested_end = _parse_slot(start_time, duration_minutes)
+    matches = []
+    for booking in RESERVATIONS:
+        if booking["station_id"] != station_id or booking["connector_type"] != connector_type:
+            continue
+        booking_start, booking_end = _parse_slot(booking["start_time"], booking["duration_minutes"])
+        if requested_start < booking_end and booking_start < requested_end:
+            matches.append(booking)
+    return matches
+
+
+def execute_check_charging_availability(
+    connector_type: str,
+    location: str = '',
+    station_id: Optional[str] = None,
+    start_time: Optional[str] = None,
+    duration_minutes: Optional[int] = None,
+) -> str:
+    """Tra cứu trạm và số cổng khả dụng trong khung giờ nếu được cung cấp."""
+    normalized_connector = _normalize_connector(connector_type)
+    if (start_time is None) != (duration_minutes is None):
+        return json.dumps({"status": "INVALID_ARGUMENTS", "message": "Cần cung cấp cả start_time và duration_minutes."}, ensure_ascii=False)
+    if start_time is not None:
+        try:
+            _parse_slot(start_time, duration_minutes)
+            if type(duration_minutes) is not int or not 1 <= duration_minutes <= 240:
+                raise ValueError()
+        except (TypeError, ValueError):
+            return json.dumps({"status": "INVALID_ARGUMENTS", "message": "Khung giờ phải dùng HH:MM DD/MM/YYYY và thời lượng 1–240 phút."}, ensure_ascii=False)
+    requested_station = station_id.strip().upper() if station_id else None
+    if requested_station and requested_station not in MOCK_STATIONS:
+        return json.dumps({"status": "NOT_FOUND", "message": f"Không tìm thấy trạm sạc có mã '{requested_station}'."}, ensure_ascii=False)
+
+    candidates = []
+    matched = False
+    for current_id, station in MOCK_STATIONS.items():
+        if requested_station and current_id != requested_station:
+            continue
+        if not requested_station and (not location.strip() or normalize_location(location) != normalize_location(station['location'])):
+            continue
+        matched = True
+        connector = station["connectors"].get(normalized_connector)
+        reserved = _overlapping_reservations(current_id, normalized_connector, start_time, duration_minutes) if start_time else []
+        available = max(0, connector["available_ports"] - len(reserved)) if connector else 0
+        if connector and available > 0:
+            candidates.append({
+                "station_id": current_id, "station_name": station["name"], "location": station["location"],
+                "connector_type": normalized_connector, "available_ports": available,
+                "total_ports": connector["total_ports"], "load_percent": connector["load_percent"],
+                "reserved_overlapping_slots": len(reserved), "availability_window": {"start_time": start_time, "duration_minutes": duration_minutes} if start_time else None
+            })
+
+    if not candidates:
         return json.dumps({
-            "status": "SUCCESS",
-            "student_id": student_id,
-            "data": student
-        }, ensure_ascii=False)
-    else:
-        return json.dumps({
-            "status": "NOT_FOUND",
-            "message": f"Không tìm thấy dữ liệu sinh viên có mã '{student_id}'"
+            "status": "UNAVAILABLE" if matched else "LOCATION_NOT_FOUND",
+            "message": f"Không có cổng {normalized_connector} khả dụng tại {location}." if matched else "Chưa nhận diện được khu vực trong dữ liệu mô phỏng; hãy cung cấp mã trạm hoặc VinUni Ocean Park.", "stations": []
         }, ensure_ascii=False)
 
-
-def execute_schedule_appointment(student_id: str, datetime_str: str, advisor_name: str = "PGS.TS Nguyễn Văn A") -> str:
-    """Thực thi đặt lịch hẹn tư vấn học vụ"""
+    candidates.sort(key=lambda item: (-item["available_ports"], item["load_percent"]))
     return json.dumps({
-        "status": "SUCCESS",
-        "booking_id": f"BK-{student_id}-99",
-        "student_id": student_id,
-        "datetime": datetime_str,
-        "advisor": advisor_name,
-        "message": f"Đặt lịch thành công cho sinh viên {student_id} với {advisor_name} vào lúc {datetime_str}."
+        "status": "SUCCESS", "location": location, "connector_type": normalized_connector,
+        "stations": candidates, "recommended_station": candidates[0]
     }, ensure_ascii=False)
 
 
-# Router gọi tool thực tế
+def execute_reserve_charging_slot(
+    station_id: str, vehicle_id: str, start_time: str, duration_minutes: int, connector_type: str
+) -> str:
+    """Tạo đặt chỗ khi trạm và loại đầu sạc vẫn còn cổng trống."""
+    normalized_station_id = station_id.strip().upper()
+    try:
+        _parse_slot(start_time, duration_minutes)
+        if type(duration_minutes) is not int or not 1 <= duration_minutes <= 240 or not vehicle_id.strip():
+            raise ValueError()
+    except (ValueError, TypeError):
+        return json.dumps({'status': 'INVALID_ARGUMENTS', 'message': 'Cần giờ HH:MM DD/MM/YYYY, mã xe và thời lượng 1–240 phút.'}, ensure_ascii=False)
+    for old in RESERVATIONS:
+        if all(old[k] == v for k, v in {'station_id': normalized_station_id, 'vehicle_id': vehicle_id, 'start_time': start_time, 'duration_minutes': duration_minutes, 'connector_type': _normalize_connector(connector_type)}.items()):
+            return json.dumps({'status': 'SUCCESS', 'booking': old, 'message': 'Đặt chỗ này đã tồn tại.'}, ensure_ascii=False)
+    normalized_connector = _normalize_connector(connector_type)
+    station = MOCK_STATIONS.get(normalized_station_id)
+    if not station:
+        return json.dumps({"status": "NOT_FOUND", "message": f"Không tìm thấy trạm sạc có mã '{normalized_station_id}'."}, ensure_ascii=False)
+
+    connector = station["connectors"].get(normalized_connector)
+    reserved = _overlapping_reservations(normalized_station_id, normalized_connector, start_time, duration_minutes)
+    if not connector or len(reserved) >= connector["available_ports"]:
+        return json.dumps({
+            "status": "UNAVAILABLE", "message": f"Trạm {normalized_station_id} không còn cổng {normalized_connector} để đặt chỗ."
+        }, ensure_ascii=False)
+
+    booking = {
+        "booking_id": f"CHG-{len(RESERVATIONS) + 1:03d}", "station_id": normalized_station_id,
+        "station_name": station["name"], "vehicle_id": vehicle_id, "start_time": start_time,
+        "duration_minutes": duration_minutes, "connector_type": normalized_connector
+    }
+    RESERVATIONS.append(booking)
+    return json.dumps({
+        "status": "SUCCESS", "booking": booking,
+        "message": f"Đã đặt chỗ sạc {normalized_connector} tại {station['name']} từ {start_time} trong {duration_minutes} phút."
+    }, ensure_ascii=False)
+
+
 TOOL_ROUTER = {
-    "academic_query": execute_academic_query,
-    "schedule_appointment": execute_schedule_appointment
+    "check_charging_availability": execute_check_charging_availability,
+    "reserve_charging_slot": execute_reserve_charging_slot
 }
 
+
 def dispatch_tool_call(tool_name: str, arguments: Dict[str, Any]) -> str:
-    """Hàm trung chuyển thực thi tool"""
-    if tool_name in TOOL_ROUTER:
-        try:
-            return TOOL_ROUTER[tool_name](**arguments)
-        except Exception as e:
-            return json.dumps({"status": "EXECUTION_ERROR", "error": str(e)}, ensure_ascii=False)
-    return json.dumps({"status": "UNKNOWN_TOOL", "error": f"Tool '{tool_name}' không tồn tại!"}, ensure_ascii=False)
+    """Điều phối lệnh gọi công cụ và chuẩn hóa lỗi thực thi thành JSON."""
+    if tool_name not in TOOL_ROUTER:
+        return json.dumps({"status": "UNKNOWN_TOOL", "error": f"Tool '{tool_name}' không tồn tại!"}, ensure_ascii=False)
+    try:
+        return TOOL_ROUTER[tool_name](**arguments)
+    except Exception as error:
+        return json.dumps({"status": "EXECUTION_ERROR", "error": str(error)}, ensure_ascii=False)

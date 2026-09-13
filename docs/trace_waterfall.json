@@ -1,29 +1,246 @@
 [
   {
     "step": 1,
-    "query": "Chào bạn, bạn có thể giới thiệu quy chế học vụ cơ bản của Đại học VinUni không?",
+    "query": "Chào bạn, bạn có thể giới thiệu ngắn gọn cách sử dụng trợ lý trạm sạc không?",
     "action_type": "FINAL_ANSWER",
-    "thought": "Câu hỏi chung về quy chế học vụ, trả lời trực tiếp không cần gọi Tool.",
-    "output": "[Mock Agent Response]: Xin chào! Quy chế học vụ VinUni yêu cầu sinh viên tích lũy tối thiểu 120 tín chỉ và duy trì GPA trên 2.0 để tốt nghiệp.",
-    "latency_ms": 2845.93
+    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
+    "output": "Chào bạn! Tôi là Trợ lý Điều phối Tải và Kiểm tra Khả dụng Trạm Sạc VinFast. Tôi có thể giúp bạn tìm kiếm các trạm sạc còn trống và đặt chỗ sạc xe.\n\nBạn có thể hỏi tôi những câu như:\n*   \"Kiểm tra trạm sạc ở Vincom Long Biên có cổng CCS2 không?\"\n*   \"Đặt chỗ sạc cho xe 30H-123.45 tại trạm VF-OP01, lúc 14:00 hôm nay, sạc 60 phút, cổng Type 2.\"\n\nHãy cho tôi biết bạn cần gì nhé!",
+    "latency_ms": 2688.5,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC01"
   },
   {
     "step": 1,
-    "query": "Hãy tra cứu thông tin học vụ của sinh viên SV2026001.",
+    "query": "Kiểm tra giúp tôi trạm sạc ở VinUni Ocean Park còn cổng CCS2 trống không.",
     "action_type": "TOOL_EXECUTION",
-    "tool_name": "academic_query",
+    "tool_name": "check_charging_availability",
     "arguments": {
-      "student_id": "SV2026001"
+      "location": "VinUni Ocean Park",
+      "connector_type": "CCS2"
     },
-    "observation": {},
-    "latency_ms": 799.12
+    "observation": {
+      "status": "SUCCESS",
+      "location": "VinUni Ocean Park",
+      "connector_type": "CCS2",
+      "stations": [
+        {
+          "station_id": "VF-OP01",
+          "station_name": "Trạm VinFast Ocean Park A",
+          "location": "VinUni Ocean Park",
+          "connector_type": "CCS2",
+          "total_ports": 4,
+          "available_ports": 2,
+          "load_percent": 55
+        },
+        {
+          "station_id": "VF-OP02",
+          "station_name": "Trạm VinFast Ocean Park B",
+          "location": "VinUni Ocean Park",
+          "connector_type": "CCS2",
+          "total_ports": 4,
+          "available_ports": 1,
+          "load_percent": 70
+        }
+      ],
+      "recommended_station": {
+        "station_id": "VF-OP01",
+        "station_name": "Trạm VinFast Ocean Park A",
+        "location": "VinUni Ocean Park",
+        "connector_type": "CCS2",
+        "total_ports": 4,
+        "available_ports": 2,
+        "load_percent": 55
+      }
+    },
+    "thought": "Gemini quyết định gọi công cụ 'check_charging_availability' với tham số: {\"location\": \"VinUni Ocean Park\", \"connector_type\": \"CCS2\"}",
+    "latency_ms": 1824.63,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC02"
   },
   {
     "step": 2,
-    "query": "Hãy tra cứu thông tin học vụ của sinh viên SV2026001.",
+    "query": "Kiểm tra giúp tôi trạm sạc ở VinUni Ocean Park còn cổng CCS2 trống không.",
     "action_type": "FINAL_ANSWER",
-    "thought": "Tổng hợp kết quả từ MCP Server thành công.",
-    "output": "Chưa thể trả lời chi tiết do chưa nhận được dữ liệu từ MCP Server (hãy hoàn thành TODO 2.1).",
-    "latency_ms": 10.0
+    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
+    "output": "Tại VinUni Ocean Park, các trạm sạc sau đây có cổng CCS2 trống:\n*   **Trạm VinFast Ocean Park A (VF-OP01)**: Còn 2 cổng trống.\n*   **Trạm VinFast Ocean Park B (VF-OP02)**: Còn 1 cổng trống.",
+    "latency_ms": 2474.05,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC02"
+  },
+  {
+    "step": 1,
+    "query": "Hãy đặt chỗ sạc CCS2 cho xe VF 8 biển 30H-123.45 tại trạm VF-OP01 từ 14:00 đến 15:00 ngày 15/09/2026.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "reserve_charging_slot",
+    "arguments": {
+      "connector_type": "CCS2",
+      "duration_minutes": 60,
+      "start_time": "14:00 15/09/2026",
+      "station_id": "VF-OP01",
+      "vehicle_id": "30H-123.45"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "booking": {
+        "booking_id": "CHG-001",
+        "station_id": "VF-OP01",
+        "station_name": "Trạm VinFast Ocean Park A",
+        "vehicle_id": "30H-123.45",
+        "start_time": "14:00 15/09/2026",
+        "duration_minutes": 60,
+        "connector_type": "CCS2"
+      },
+      "message": "Đã đặt chỗ sạc CCS2 tại Trạm VinFast Ocean Park A từ 14:00 15/09/2026 trong 60 phút."
+    },
+    "thought": "Gemini quyết định gọi công cụ 'reserve_charging_slot' với tham số: {\"connector_type\": \"CCS2\", \"duration_minutes\": 60, \"start_time\": \"14:00 15/09/2026\", \"station_id\": \"VF-OP01\", \"vehicle_id\": \"30H-123.45\"}",
+    "latency_ms": 2244.56,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC03"
+  },
+  {
+    "step": 2,
+    "query": "Hãy đặt chỗ sạc CCS2 cho xe VF 8 biển 30H-123.45 tại trạm VF-OP01 từ 14:00 đến 15:00 ngày 15/09/2026.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
+    "output": "Bạn đã đặt chỗ thành công với mã đặt chỗ CHG-001 tại Trạm VinFast Ocean Park A từ 14:00 15/09/2026 trong 60 phút.",
+    "latency_ms": 1873.56,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC03"
+  },
+  {
+    "step": 1,
+    "query": "Xe VF 8 biển 30H-123.45 của tôi cần sạc CCS2 tại VinUni Ocean Park vào 14:00 ngày 15/09/2026. Hãy tìm trạm còn chỗ và đặt khung giờ một tiếng phù hợp nhất.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "check_charging_availability",
+    "arguments": {
+      "connector_type": "CCS2",
+      "location": "VinUni Ocean Park"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "location": "VinUni Ocean Park",
+      "connector_type": "CCS2",
+      "stations": [
+        {
+          "station_id": "VF-OP01",
+          "station_name": "Trạm VinFast Ocean Park A",
+          "location": "VinUni Ocean Park",
+          "connector_type": "CCS2",
+          "total_ports": 4,
+          "available_ports": 2,
+          "load_percent": 55
+        },
+        {
+          "station_id": "VF-OP02",
+          "station_name": "Trạm VinFast Ocean Park B",
+          "location": "VinUni Ocean Park",
+          "connector_type": "CCS2",
+          "total_ports": 4,
+          "available_ports": 1,
+          "load_percent": 70
+        }
+      ],
+      "recommended_station": {
+        "station_id": "VF-OP01",
+        "station_name": "Trạm VinFast Ocean Park A",
+        "location": "VinUni Ocean Park",
+        "connector_type": "CCS2",
+        "total_ports": 4,
+        "available_ports": 2,
+        "load_percent": 55
+      }
+    },
+    "thought": "Gemini quyết định gọi công cụ 'check_charging_availability' với tham số: {\"connector_type\": \"CCS2\", \"location\": \"VinUni Ocean Park\"}",
+    "latency_ms": 2593.62,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC04"
+  },
+  {
+    "step": 2,
+    "query": "Xe VF 8 biển 30H-123.45 của tôi cần sạc CCS2 tại VinUni Ocean Park vào 14:00 ngày 15/09/2026. Hãy tìm trạm còn chỗ và đặt khung giờ một tiếng phù hợp nhất.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "reserve_charging_slot",
+    "arguments": {
+      "connector_type": "CCS2",
+      "duration_minutes": 60,
+      "start_time": "14:00 15/09/2026",
+      "station_id": "VF-OP01",
+      "vehicle_id": "30H-123.45"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "booking": {
+        "booking_id": "CHG-001",
+        "station_id": "VF-OP01",
+        "station_name": "Trạm VinFast Ocean Park A",
+        "vehicle_id": "30H-123.45",
+        "start_time": "14:00 15/09/2026",
+        "duration_minutes": 60,
+        "connector_type": "CCS2"
+      },
+      "message": "Đã đặt chỗ sạc CCS2 tại Trạm VinFast Ocean Park A từ 14:00 15/09/2026 trong 60 phút."
+    },
+    "thought": "Gemini quyết định gọi công cụ 'reserve_charging_slot' với tham số: {\"connector_type\": \"CCS2\", \"duration_minutes\": 60, \"start_time\": \"14:00 15/09/2026\", \"station_id\": \"VF-OP01\", \"vehicle_id\": \"30H-123.45\"}",
+    "latency_ms": 54133.06,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC04"
+  },
+  {
+    "step": 3,
+    "query": "Xe VF 8 biển 30H-123.45 của tôi cần sạc CCS2 tại VinUni Ocean Park vào 14:00 ngày 15/09/2026. Hãy tìm trạm còn chỗ và đặt khung giờ một tiếng phù hợp nhất.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
+    "output": "Bạn đã đặt chỗ sạc thành công với mã đặt chỗ CHG-001 tại Trạm VinFast Ocean Park A vào 14:00 ngày 15/09/2026 trong 60 phút.",
+    "latency_ms": 1826.06,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC04"
+  },
+  {
+    "step": 1,
+    "query": "Kiểm tra và đặt sạc CCS2 tại trạm VF-KHONGTONTAI lúc 14:00 ngày 15/09/2026.",
+    "action_type": "TOOL_EXECUTION",
+    "tool_name": "check_charging_availability",
+    "arguments": {
+      "connector_type": "CCS2",
+      "station_id": "VF-KHONGTONTAI"
+    },
+    "observation": {
+      "status": "NOT_FOUND",
+      "message": "Không tìm thấy trạm sạc có mã 'VF-KHONGTONTAI'."
+    },
+    "thought": "Gemini quyết định gọi công cụ 'check_charging_availability' với tham số: {\"connector_type\": \"CCS2\", \"station_id\": \"VF-KHONGTONTAI\"}",
+    "latency_ms": 1960.24,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC05"
+  },
+  {
+    "step": 2,
+    "query": "Kiểm tra và đặt sạc CCS2 tại trạm VF-KHONGTONTAI lúc 14:00 ngày 15/09/2026.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Gemini phản hồi trực tiếp bằng văn bản (không cần gọi công cụ).",
+    "output": "Xin lỗi, tôi không tìm thấy trạm sạc với mã 'VF-KHONGTONTAI'. Vui lòng kiểm tra lại mã trạm hoặc cung cấp một trạm khác để tôi có thể hỗ trợ bạn.",
+    "latency_ms": 2106.55,
+    "provider": "GeminiProvider",
+    "model": "gemini-2.5-flash",
+    "source": "live_api",
+    "test_id": "TC05"
   }
 ]
