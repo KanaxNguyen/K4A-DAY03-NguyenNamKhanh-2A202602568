@@ -36,6 +36,9 @@ class ChargingTests(unittest.TestCase):
         self.assertEqual(len(RESERVATIONS), 1)
         args['duration_minutes'] = -5
         self.assertEqual(json.loads(dispatch_tool_call('reserve_charging_slot', args))['status'], 'INVALID_ARGUMENTS')
+        args['duration_minutes'] = 60
+        args['vehicle_id'] = '3H-123.45'
+        self.assertEqual(json.loads(dispatch_tool_call('reserve_charging_slot', args))['status'], 'INVALID_ARGUMENTS')
 
     def test_time_window_capacity_and_non_overlapping_slots(self):
         first = dict(station_id='VF-OP02', vehicle_id='30H-001.01', connector_type='CCS2', start_time='14:00 15/09/2026', duration_minutes=60)
@@ -56,6 +59,12 @@ class ChargingTests(unittest.TestCase):
             'location': 'VinUni Ocean Park', 'connector_type': 'CCS2', 'start_time': '14:00 15/09/2026'
         }))
         self.assertEqual(result['status'], 'INVALID_ARGUMENTS')
+
+    def test_unknown_station_takes_priority_over_incomplete_time_window(self):
+        result = json.loads(dispatch_tool_call('check_charging_availability', {
+            'station_id': 'VF-KHONGTONTAI', 'connector_type': 'CCS2', 'start_time': '14:00 15/09/2026'
+        }))
+        self.assertEqual(result['status'], 'NOT_FOUND')
 
     def test_schema_declares_backend_constraints(self):
         lookup, reservation = TOOLS_SCHEMA

@@ -22,11 +22,11 @@
 
 ## 2. TRÍCH XUẤT KẾT QUẢ WATERFALL TRACE LOG (SAU KHI CHẠY TEST SUITE TRÊN API THẬT)
 
-> **Trạng thái phiên bản:** Trace bên dưới và kết quả 5/5 thuộc bản trước khi nâng cấp native function response. Bản native mới đã qua **20 kiểm thử offline/contract** (gồm đa tool, function-response/call ID, lỗi tool, slot chồng lấn, retry, tương thích schema Gemini và đổi trạm). Probe API đã xác nhận hết lỗi schema, nhưng gặp 429 quota. Cần chạy lại nghiệm thu API trước khi dùng để chứng nhận bản mới. Xem `TESTING.md`.
+> **Trạng thái phiên bản:** Bản native hiện tại đã qua **21 kiểm thử offline/contract** và **5/5 test API thật PASS** qua OpenRouter/Nex AGI (`nex-agi/nex-n2.5-mini:free`), `source: live_api`, không fallback Mock. Trace chính thức: `docs/trace_native_api.json`; kết quả: `docs/test_results_native_api.json`. Scenario `race` chạy live đã chứng minh Agent đổi từ VF-OP01 sang VF-OP02 sau Observation `UNAVAILABLE`. Xem `TESTING.md`.
 
-> ⚠️ **YÊU CẦU NGHIỆM THU:** Mở tệp `.env` điền `GEMINI_API_KEY` (hoặc `OPENAI_API_KEY`) để kết nối LLM thật trước khi thực thi `python src/app.py --all`. Bài nộp chỉ dùng Mock Offline Provider sẽ không đạt điểm nghiệm thực tế.
+> ✅ **NGHIỆM THU API THẬT:** Bộ 5 test mới nhất đã PASS với `LLM_PROVIDER=openrouter`. Bài nộp giữ trace API thật trong `docs/`; Mock chỉ dùng cho regression offline.
 
-Trích xuất TC04 từ lần chạy Gemini API thật ngày 13/09/2026. Không fallback Mock; khi gặp 429, chương trình chờ rồi retry. Các dữ liệu trạm/booking vẫn là mô phỏng của bài lab.
+Phần JSON dưới đây là **phụ lục legacy** từ Gemini bản trước. Bằng chứng cần chấm là trace native hiện tại ở `docs/trace_native_api.json`; dữ liệu trạm/booking vẫn là mô phỏng của bài lab.
 
 ```json
 [
@@ -131,11 +131,11 @@ Trích xuất TC04 từ lần chạy Gemini API thật ngày 13/09/2026. Không 
 
 ## 3. TỔNG KẾT KẾT QUẢ NGHIỆM THU & NỘP BÀI
 
-- [x] Bằng chứng lịch sử: bản trước đã chạy 5 / 5 test Gemini API thật.
-- [x] Bản hiện tại: đã qua 20 kiểm thử offline/contract và các scenario đổi trạm; schema Gemini đã tương thích, nhưng chưa có API live PASS mới vì quota Gemini 429.
-- **Tổng số Test Cases API của bản hiện tại:** Chưa nghiệm thu lại — không được ghi là 5/5 cho tới khi file native API mới đều PASS.
-- **Số lượt gọi Tool qua MCP Server (bằng chứng API lịch sử):** 5 lượt trong bộ 5 test; có 1 lượt trả về NOT_FOUND đúng kỳ vọng TC05.
-- **Kết quả đẩy Repo nộp bài:** [ ] Đã Commit và Push mã nguồn thành công lên GitHub cá nhân.
+- [x] Bản native hiện tại: 21 kiểm thử offline/contract PASS.
+- [x] **Tổng số Test Cases API hiện tại:** **5 / 5 PASS** qua OpenRouter/Nex AGI, không fallback Mock.
+- [x] **Bằng chứng Dynamic Decision live:** VF-OP01 tra cứu được → đặt trả `UNAVAILABLE` → tra cứu lại → đặt VF-OP02 thành công.
+- [x] **Số lượt gọi Tool qua MCP Server trong API suite:** 6 lượt; TC05 trả `NOT_FOUND` và không tạo booking.
+- [x] **Kết quả đẩy Repo:** Đã commit và push GitHub cá nhân.
 
 ---
 

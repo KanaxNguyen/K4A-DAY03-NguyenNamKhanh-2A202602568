@@ -26,15 +26,15 @@ Mặc định retry 3 lần; `--no-retry` dừng ngay khi API lỗi. Không tự
 
 | File | Ý nghĩa |
 | --- | --- |
-| `docs/trace_waterfall.json`, `docs/test_results_api.json` | Bằng chứng Gemini 5/5 của bản trước native-response; giữ nguyên |
-| `docs/trace_native_api.json`, `docs/test_results_native_api.json` | Bằng chứng chỉ được dùng khi bộ 5 test API trên bản native mới đều PASS |
+| `docs/trace_waterfall.json`, `docs/test_results_api.json` | Bằng chứng Gemini lịch sử của bản trước native-response; giữ để đối chiếu |
+| `docs/trace_native_api.json`, `docs/test_results_native_api.json` | **Bằng chứng nghiệm thu hiện tại: OpenRouter/Nex AGI, 5/5 PASS, native tool calling** |
 | `artifacts/trace_offline.json`, `artifacts/test_results_offline.json` | Bộ test Mock mới nhất |
 | `artifacts/trace_alternate_offline.json`, `artifacts/trace_race_offline.json` | Quyết định linh hoạt bằng Mock |
 | `artifacts/trace_race_native_api.json` | Tình huống race chạy với `--live` |
 | `artifacts/trace_interactive.json`, `artifacts/trace_demo.json` | Chat có lịch sử / tra cứu đơn lẻ |
 | `artifacts/previous/` | Log chạy thử trước khi dọn repo, giữ để đối chiếu |
 
-Chỉ thay trace nộp bài sau khi đã xác nhận bộ native API mới đạt. `artifacts/` được bỏ qua bởi Git; không phải bằng chứng nghiệm thu mặc định.
+`docs/trace_native_api.json` là trace nộp bài hiện tại. `artifacts/` được bỏ qua bởi Git; không phải bằng chứng nghiệm thu mặc định.
 
 ## Cách đọc trace mới
 
@@ -56,4 +56,4 @@ Nhập lần lượt: “Tìm trạm CCS2 tại Ocean Park 1 cho xe 30H-456.78�
 
 ## Trạng thái kiểm chứng
 
-Bản native đã qua 20 kiểm thử offline/contract: giữ chữ ký Gemini, đúng OpenAI call ID, nhiều tool calls, lỗi tool, arguments sai, giới hạn vòng lặp, đo retry, kiểm tra slot chồng lấn và schema. JSON Schema vẫn chặt chẽ cho OpenAI/nội bộ; khi gửi Gemini, adapter bỏ riêng `additionalProperties` vì API Gemini không nhận trường đó. Hai tình huống đổi trạm đã chạy Mock. Lượt probe Gemini thật của bản mới đã qua lỗi schema nhưng gặp 429 quota; chưa có bằng chứng mới cho native API hoặc hội thoại nhiều lượt thật. Bộ 5/5 API cũ chỉ chứng minh phiên bản cũ.
+Bản native đã qua **21 kiểm thử offline/contract**: giữ chữ ký Gemini, đúng OpenAI call ID, nhiều tool calls, lỗi tool, arguments sai, giới hạn vòng lặp, đo retry, kiểm tra slot chồng lấn, schema và ưu tiên NOT_FOUND cho mã trạm. JSON Schema vẫn chặt chẽ cho OpenAI/nội bộ; khi gửi Gemini, adapter bỏ riêng `additionalProperties` vì API Gemini không nhận trường đó. Ngày 13/09/2026, bộ 5 test của bản native hiện tại chạy qua OpenRouter/Nex AGI đạt **5/5 PASS** (`source: live_api`, không Mock). Scenario `race` cũng PASS live: A → UNAVAILABLE → tra cứu lại → đặt B. Gemini hiện hết quota, nhưng không ảnh hưởng bằng chứng OpenRouter hiện tại.

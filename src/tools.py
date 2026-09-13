@@ -31,7 +31,7 @@ TOOLS_SCHEMA = [
             "type": "object",
             "properties": {
                 "station_id": {"type": "string", "pattern": "^VF-[A-Z0-9-]+$", "description": "Mã trạm sạc cần đặt, ví dụ: VF-OP01."},
-                "vehicle_id": {"type": "string", "minLength": 3, "maxLength": 32, "description": "Biển số hoặc mã định danh xe."},
+                "vehicle_id": {"type": "string", "pattern": "^\\d{2}[A-Z]-\\d{3}\\.\\d{2}$", "description": "Biển số xe theo dạng 30H-123.45; phải sao chép chính xác từ yêu cầu người dùng."},
                 "start_time": {"type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d [0-3]\\d/[01]\\d/\\d{4}$", "description": "Thời điểm bắt đầu, HH:MM DD/MM/YYYY."},
                 "duration_minutes": {"type": "integer", "minimum": 1, "maximum": 240, "description": "Thời lượng đặt chỗ, 1–240 phút."},
                 "connector_type": {"type": "string", "enum": ["CCS2", "Type 2"], "description": "Loại đầu sạc cần dùng."}
@@ -107,6 +107,11 @@ def execute_check_charging_availability(
 ) -> str:
     """Tra cứu trạm và số cổng khả dụng trong khung giờ nếu được cung cấp."""
     normalized_connector = _normalize_connector(connector_type)
+    requested_station = station_id.strip().upper() if station_id else None
+    # A named station can be resolved independently of an optional time window.
+    # This makes a NOT_FOUND response actionable even when a booking request is incomplete.
+    if requested_station and requested_station not in MOCK_STATIONS:
+        return json.dumps({"status": "NOT_FOUND", "message": f"Không tìm thấy trạm sạc có mã '{requested_station}'."}, ensure_ascii=False)
     if (start_time is None) != (duration_minutes is None):
         return json.dumps({"status": "INVALID_ARGUMENTS", "message": "Cần cung cấp cả start_time và duration_minutes."}, ensure_ascii=False)
     if start_time is not None:
@@ -116,10 +121,6 @@ def execute_check_charging_availability(
                 raise ValueError()
         except (TypeError, ValueError):
             return json.dumps({"status": "INVALID_ARGUMENTS", "message": "Khung giờ phải dùng HH:MM DD/MM/YYYY và thời lượng 1–240 phút."}, ensure_ascii=False)
-    requested_station = station_id.strip().upper() if station_id else None
-    if requested_station and requested_station not in MOCK_STATIONS:
-        return json.dumps({"status": "NOT_FOUND", "message": f"Không tìm thấy trạm sạc có mã '{requested_station}'."}, ensure_ascii=False)
-
     candidates = []
     matched = False
     for current_id, station in MOCK_STATIONS.items():
@@ -159,10 +160,10 @@ def execute_reserve_charging_slot(
     normalized_station_id = station_id.strip().upper()
     try:
         _parse_slot(start_time, duration_minutes)
-        if type(duration_minutes) is not int or not 1 <= duration_minutes <= 240 or not vehicle_id.strip():
+        if type(duration_minutes) is not int or not 1 <= duration_minutes <= 240 or not re.fullmatch(r"\d{2}[A-Z]-\d{3}\.\d{2}", vehicle_id.strip()):
             raise ValueError()
     except (ValueError, TypeError):
-        return json.dumps({'status': 'INVALID_ARGUMENTS', 'message': 'Cần giờ HH:MM DD/MM/YYYY, mã xe và thời lượng 1–240 phút.'}, ensure_ascii=False)
+        return json.dumps({'status': 'INVALID_ARGUMENTS', 'message': 'Cần giờ HH:MM DD/MM/YYYY, biển số dạng 30H-123.45 và thời lượng 1–240 phút.'}, ensure_ascii=False)
     for old in RESERVATIONS:
         if all(old[k] == v for k, v in {'station_id': normalized_station_id, 'vehicle_id': vehicle_id, 'start_time': start_time, 'duration_minutes': duration_minutes, 'connector_type': _normalize_connector(connector_type)}.items()):
             return json.dumps({'status': 'SUCCESS', 'booking': old, 'message': 'Đặt chỗ này đã tồn tại.'}, ensure_ascii=False)

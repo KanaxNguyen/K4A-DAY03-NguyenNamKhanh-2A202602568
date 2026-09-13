@@ -61,7 +61,7 @@ Khi booking nhận `UNAVAILABLE`, agent không tự xác nhận thành công: sc
 
 ## Kết quả và giới hạn
 
-Bản trước có bằng chứng 5/5 Gemini thật trong [trace_waterfall.json](docs/trace_waterfall.json). Bản native mới đạt 20 kiểm thử offline/contract; Gemini wire-format đã được kiểm tra để bỏ riêng trường JSON Schema không được Gemini hỗ trợ. Lượt thử API mới bị 429, nên chưa dùng kết quả cũ để chứng nhận bản mới. Chạy `--all` khi có quota để sinh `docs/trace_native_api.json` và `docs/test_results_native_api.json`.
+Bản native hiện tại đạt **21 kiểm thử offline/contract**, đồng thời đã nghiệm thu **5/5 test API thật** qua OpenRouter/Nex AGI (`nex-agi/nex-n2.5-mini:free`) với native tool calling, không fallback Mock. Xem [trace_native_api.json](docs/trace_native_api.json) và [test_results_native_api.json](docs/test_results_native_api.json). Gemini vẫn có adapter riêng để bỏ trường JSON Schema mà API Gemini không hỗ trợ.
 
 Lịch sử Gemini giữ nguyên model content/thought signature; kết quả tool gửi qua `function_response`. OpenAI dùng assistant tool calls và `role=tool` với đúng call ID. Trace chỉ ghi lý do ngắn công khai nếu model cung cấp, không ghi suy nghĩ nội bộ.
 
