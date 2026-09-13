@@ -62,6 +62,7 @@ Nhập lần lượt: “Tìm trạm CCS2 tại Ocean Park 1 cho xe 30H-456.78�
 | Times City | Một trạm CCS2 hết cổng, trạm khác còn CCS2; Type 2 khả dụng |
 | Hồ Tây | Cả CCS2 và Type 2 khả dụng |
 | Mỹ Đình | Toàn bộ cổng hết chỗ, trả `UNAVAILABLE` |
+| Cầu Giấy, Long Biên, Thanh Xuân, Hà Đông, Ba Đình | 10 trạm bổ sung với CCS2/Type 2, tải 0–100% và sức chứa 0–5 cổng |
 
 `tests/test_charging.py` kiểm tra các nhánh này cùng LOCATION_NOT_FOUND, NOT_FOUND, INVALID_ARGUMENTS, booking trùng và slot chồng lấn.
 

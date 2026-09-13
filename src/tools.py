@@ -85,6 +85,76 @@ MOCK_STATIONS = {
             "CCS2": {"total_ports": 4, "available_ports": 0, "load_percent": 100},
             "Type 2": {"total_ports": 2, "available_ports": 0, "load_percent": 100}
         }
+    },
+    "VF-CG01": {
+        "station_id": "VF-CG01", "name": "Trạm VinFast Cầu Giấy A", "location": "Cầu Giấy",
+        "connectors": {
+            "CCS2": {"total_ports": 6, "available_ports": 4, "load_percent": 20},
+            "Type 2": {"total_ports": 4, "available_ports": 2, "load_percent": 50}
+        }
+    },
+    "VF-CG02": {
+        "station_id": "VF-CG02", "name": "Trạm VinFast Cầu Giấy B", "location": "Cầu Giấy",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 1, "load_percent": 75},
+            "Type 2": {"total_ports": 2, "available_ports": 2, "load_percent": 0}
+        }
+    },
+    "VF-LB01": {
+        "station_id": "VF-LB01", "name": "Trạm VinFast Long Biên A", "location": "Long Biên",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 2, "load_percent": 50},
+            "Type 2": {"total_ports": 4, "available_ports": 1, "load_percent": 75}
+        }
+    },
+    "VF-LB02": {
+        "station_id": "VF-LB02", "name": "Trạm VinFast Long Biên B", "location": "Long Biên",
+        "connectors": {
+            "CCS2": {"total_ports": 2, "available_ports": 0, "load_percent": 100},
+            "Type 2": {"total_ports": 2, "available_ports": 1, "load_percent": 50}
+        }
+    },
+    "VF-TX01": {
+        "station_id": "VF-TX01", "name": "Trạm VinFast Thanh Xuân A", "location": "Thanh Xuân",
+        "connectors": {
+            "CCS2": {"total_ports": 6, "available_ports": 3, "load_percent": 50},
+            "Type 2": {"total_ports": 4, "available_ports": 4, "load_percent": 0}
+        }
+    },
+    "VF-TX02": {
+        "station_id": "VF-TX02", "name": "Trạm VinFast Thanh Xuân B", "location": "Thanh Xuân",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 1, "load_percent": 75},
+            "Type 2": {"total_ports": 2, "available_ports": 0, "load_percent": 100}
+        }
+    },
+    "VF-HD01": {
+        "station_id": "VF-HD01", "name": "Trạm VinFast Hà Đông A", "location": "Hà Đông",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 2, "load_percent": 50},
+            "Type 2": {"total_ports": 2, "available_ports": 2, "load_percent": 0}
+        }
+    },
+    "VF-HD02": {
+        "station_id": "VF-HD02", "name": "Trạm VinFast Hà Đông B", "location": "Hà Đông",
+        "connectors": {
+            "CCS2": {"total_ports": 6, "available_ports": 5, "load_percent": 17},
+            "Type 2": {"total_ports": 4, "available_ports": 1, "load_percent": 75}
+        }
+    },
+    "VF-BD01": {
+        "station_id": "VF-BD01", "name": "Trạm VinFast Ba Đình A", "location": "Ba Đình",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 1, "load_percent": 75},
+            "Type 2": {"total_ports": 2, "available_ports": 2, "load_percent": 0}
+        }
+    },
+    "VF-BD02": {
+        "station_id": "VF-BD02", "name": "Trạm VinFast Ba Đình B", "location": "Ba Đình",
+        "connectors": {
+            "CCS2": {"total_ports": 2, "available_ports": 0, "load_percent": 100},
+            "Type 2": {"total_ports": 4, "available_ports": 3, "load_percent": 25}
+        }
     }
 }
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-from tools import TOOLS_SCHEMA, dispatch_tool_call, reset_demo_state, RESERVATIONS
+from tools import TOOLS_SCHEMA, MOCK_STATIONS, dispatch_tool_call, reset_demo_state, RESERVATIONS
 from providers import call_with_retry
 from app import run_react_agent, evaluate_case
 from mcp_server import MCPChargingServer
@@ -29,6 +29,7 @@ class ChargingTests(unittest.TestCase):
         self.assertEqual(self.lookup(location='Ocean Park 2')['status'], 'LOCATION_NOT_FOUND')
 
     def test_dataset_covers_multiple_locations_connectors_and_full_station(self):
+        self.assertEqual(len(MOCK_STATIONS), 16)
         times_ccs2 = self.lookup(location='Times City')
         self.assertEqual(times_ccs2['recommended_station']['station_id'], 'VF-TC02')
         times_type2 = self.lookup(location='Times City', connector_type='Type 2')
@@ -36,6 +37,8 @@ class ChargingTests(unittest.TestCase):
         self.assertEqual(self.lookup(location='Hồ Tây', connector_type='Type 2')['status'], 'SUCCESS')
         self.assertEqual(self.lookup(location='Mỹ Đình')['status'], 'UNAVAILABLE')
         self.assertEqual(self.lookup(station_id='VF-TC01')['status'], 'UNAVAILABLE')
+        self.assertEqual(self.lookup(location='Cầu Giấy')['recommended_station']['station_id'], 'VF-CG01')
+        self.assertEqual(self.lookup(location='Hà Đông')['recommended_station']['station_id'], 'VF-HD02')
 
     def test_missing_station_needs_no_invented_location(self):
         self.assertEqual(self.lookup(station_id='VF-KHONGTONTAI')['status'], 'NOT_FOUND')
