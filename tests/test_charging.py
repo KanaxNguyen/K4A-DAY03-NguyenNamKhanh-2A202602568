@@ -19,12 +19,23 @@ class ChargingTests(unittest.TestCase):
         reset_demo_state()
 
     def lookup(self, **args):
-        return json.loads(dispatch_tool_call('check_charging_availability', dict(connector_type='CCS2', **args)))
+        arguments = {'connector_type': 'CCS2'}
+        arguments.update(args)
+        return json.loads(dispatch_tool_call('check_charging_availability', arguments))
 
     def test_alias_and_unknown_area(self):
         for name in ['ocean park', 'Ocean Park 1', 'oceanpark1', 'VinUni Ocean Park']:
             self.assertEqual(self.lookup(location=name)['status'], 'SUCCESS')
         self.assertEqual(self.lookup(location='Ocean Park 2')['status'], 'LOCATION_NOT_FOUND')
+
+    def test_dataset_covers_multiple_locations_connectors_and_full_station(self):
+        times_ccs2 = self.lookup(location='Times City')
+        self.assertEqual(times_ccs2['recommended_station']['station_id'], 'VF-TC02')
+        times_type2 = self.lookup(location='Times City', connector_type='Type 2')
+        self.assertEqual(times_type2['recommended_station']['station_id'], 'VF-TC01')
+        self.assertEqual(self.lookup(location='Hồ Tây', connector_type='Type 2')['status'], 'SUCCESS')
+        self.assertEqual(self.lookup(location='Mỹ Đình')['status'], 'UNAVAILABLE')
+        self.assertEqual(self.lookup(station_id='VF-TC01')['status'], 'UNAVAILABLE')
 
     def test_missing_station_needs_no_invented_location(self):
         self.assertEqual(self.lookup(station_id='VF-KHONGTONTAI')['status'], 'NOT_FOUND')

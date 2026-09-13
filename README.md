@@ -65,7 +65,7 @@ Bản native hiện tại đạt **21 kiểm thử offline/contract**, đồng t
 
 Lịch sử Gemini giữ nguyên model content/thought signature; kết quả tool gửi qua `function_response`. OpenAI dùng assistant tool calls và `role=tool` với đúng call ID. Trace chỉ ghi lý do ngắn công khai nếu model cung cấp, không ghi suy nghĩ nội bộ.
 
-MCP vẫn là lớp mô phỏng cùng tiến trình. Tải tĩnh và booking nằm trong bộ nhớ; sức chứa đã được kiểm tra theo các khoảng thời gian chồng lấn, nhưng chưa có dự báo tải hoặc lưu bền vững. Mock là kịch bản kiểm thử, không thay thế nghiệm thu LLM thật.
+MCP vẫn là lớp mô phỏng cùng tiến trình. Dataset gồm 6 trạm tại VinUni Ocean Park, Times City, Hồ Tây và Mỹ Đình; có CCS2/Type 2, trạm còn cổng, trạm hết cổng, tải thấp/cao và đặt chỗ chồng lấn theo thời gian. Tải tĩnh và booking nằm trong bộ nhớ; chưa có dự báo tải hoặc lưu bền vững. Mock là kịch bản kiểm thử, không thay thế nghiệm thu LLM thật.
 
 Hướng dẫn chi tiết: [TESTING.md](docs/TESTING.md). Báo cáo: [trace_eval.md](docs/trace_eval.md). Tài liệu gốc: [CODELAB.md](docs/CODELAB.md).
 

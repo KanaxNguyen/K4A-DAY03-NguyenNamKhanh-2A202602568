@@ -57,6 +57,34 @@ MOCK_STATIONS = {
             "CCS2": {"total_ports": 4, "available_ports": 1, "load_percent": 70},
             "Type 2": {"total_ports": 2, "available_ports": 0, "load_percent": 100}
         }
+    },
+    "VF-TC01": {
+        "station_id": "VF-TC01", "name": "Trạm VinFast Times City A", "location": "Times City",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 0, "load_percent": 100},
+            "Type 2": {"total_ports": 4, "available_ports": 3, "load_percent": 25}
+        }
+    },
+    "VF-TC02": {
+        "station_id": "VF-TC02", "name": "Trạm VinFast Times City B", "location": "Times City",
+        "connectors": {
+            "CCS2": {"total_ports": 6, "available_ports": 3, "load_percent": 30},
+            "Type 2": {"total_ports": 2, "available_ports": 0, "load_percent": 100}
+        }
+    },
+    "VF-HT01": {
+        "station_id": "VF-HT01", "name": "Trạm VinFast Hồ Tây", "location": "Hồ Tây",
+        "connectors": {
+            "CCS2": {"total_ports": 2, "available_ports": 1, "load_percent": 50},
+            "Type 2": {"total_ports": 2, "available_ports": 2, "load_percent": 0}
+        }
+    },
+    "VF-MD01": {
+        "station_id": "VF-MD01", "name": "Trạm VinFast Mỹ Đình", "location": "Mỹ Đình",
+        "connectors": {
+            "CCS2": {"total_ports": 4, "available_ports": 0, "load_percent": 100},
+            "Type 2": {"total_ports": 2, "available_ports": 0, "load_percent": 100}
+        }
     }
 }
 

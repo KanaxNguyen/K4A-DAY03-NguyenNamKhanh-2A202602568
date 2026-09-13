@@ -54,6 +54,17 @@ Tổng thời gian LLM lấy từ LLM_RESPONSE (hoặc ERROR nếu request thấ
 
 Nhập lần lượt: “Tìm trạm CCS2 tại Ocean Park 1 cho xe 30H-456.78”, “Đặt lúc 17:00 ngày 15/09/2026”, “Trong 60 phút”. Chỉ đặt khi đủ dữ liệu. `/reset` xóa lịch sử nhưng giữ booking trong phiên; `exit` thoát.
 
+## Phủ dữ liệu trạm mô phỏng
+
+| Khu vực | Trạng thái được bao phủ |
+| --- | --- |
+| VinUni Ocean Park | CCS2 còn chỗ, tải khác nhau, chọn trạm và race khi đặt |
+| Times City | Một trạm CCS2 hết cổng, trạm khác còn CCS2; Type 2 khả dụng |
+| Hồ Tây | Cả CCS2 và Type 2 khả dụng |
+| Mỹ Đình | Toàn bộ cổng hết chỗ, trả `UNAVAILABLE` |
+
+`tests/test_charging.py` kiểm tra các nhánh này cùng LOCATION_NOT_FOUND, NOT_FOUND, INVALID_ARGUMENTS, booking trùng và slot chồng lấn.
+
 ## Trạng thái kiểm chứng
 
 Bản native đã qua **21 kiểm thử offline/contract**: giữ chữ ký Gemini, đúng OpenAI call ID, nhiều tool calls, lỗi tool, arguments sai, giới hạn vòng lặp, đo retry, kiểm tra slot chồng lấn, schema và ưu tiên NOT_FOUND cho mã trạm. JSON Schema vẫn chặt chẽ cho OpenAI/nội bộ; khi gửi Gemini, adapter bỏ riêng `additionalProperties` vì API Gemini không nhận trường đó. Ngày 13/09/2026, bộ 5 test của bản native hiện tại chạy qua OpenRouter/Nex AGI đạt **5/5 PASS** (`source: live_api`, không Mock). Scenario `race` cũng PASS live: A → UNAVAILABLE → tra cứu lại → đặt B. Gemini hiện hết quota, nhưng không ảnh hưởng bằng chứng OpenRouter hiện tại.
