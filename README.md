@@ -1,6 +1,6 @@
 # Trợ lý Trạm Sạc VinFast — ReAct Agent
 
-Bài Lab 3: tra cứu cổng sạc và tạo booking bằng Gemini/OpenAI Native Tool Calling. Trạm, tải và booking là dữ liệu mô phỏng; không kết nối dịch vụ VinFast thật.
+Bài Lab 3: tra cứu cổng sạc và tạo booking bằng Gemini/OpenAI/OpenRouter Native Tool Calling. Trạm, tải và booking là dữ liệu mô phỏng; không kết nối dịch vụ VinFast thật.
 
 ## Chạy nhanh
 
@@ -14,6 +14,8 @@ LLM_PROVIDER=mock .venv/bin/python src/app.py --all
 ```
 
 Cấu hình `.env` theo `.env.example` nếu chưa có. Nếu đã có key, chỉnh file hiện tại; không chép đè. Không commit `.env`.
+
+OpenRouter dùng OpenAI-compatible endpoint: đặt `LLM_PROVIDER=openrouter`, `OPENROUTER_API_KEY` và (tùy chọn) `OPENROUTER_MODEL`. Chỉ chọn model có hỗ trợ tool calling khi cần nghiệm thu native tool calling.
 
 ```bash
 .venv/bin/python src/app.py --interactive

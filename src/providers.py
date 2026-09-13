@@ -138,13 +138,24 @@ class GeminiProvider(BaseLLMProvider):
 
 class OpenAIProvider(BaseLLMProvider):
     """OpenAI Provider (Native Tool Calling với OpenAI SDK)"""
-    def __init__(self, api_key: str = None, model: str = None):
+    def __init__(self, api_key: str = None, model: str = None, base_url: str = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model_name = model or os.getenv("LLM_MODEL") or "gpt-4o-mini"
+        self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
 
     def generate_with_tools(self, prompt, tools_schema, system_prompt=""):
         from native_transport import openai_generate
         return openai_generate(self, prompt, tools_schema, system_prompt)
+
+
+class OpenRouterProvider(OpenAIProvider):
+    """OpenRouter's OpenAI-compatible endpoint; API key remains in environment only."""
+    def __init__(self, api_key: str = None, model: str = None):
+        super().__init__(
+            api_key=api_key or os.getenv("OPENROUTER_API_KEY"),
+            model=model or os.getenv("OPENROUTER_MODEL") or "google/gemma-4-26b-a4b-it:free",
+            base_url="https://openrouter.ai/api/v1",
+        )
 
 
 def get_llm_provider() -> BaseLLMProvider:
@@ -163,6 +174,11 @@ def get_llm_provider() -> BaseLLMProvider:
             return OpenAIProvider()
         else:
             raise RuntimeError("Thiếu OPENAI_API_KEY; dùng LLM_PROVIDER=mock cho offline.")
+    elif provider_type == "openrouter":
+        key = os.getenv("OPENROUTER_API_KEY")
+        if key:
+            return OpenRouterProvider()
+        raise RuntimeError("Thiếu OPENROUTER_API_KEY; dùng LLM_PROVIDER=mock cho offline.")
     elif provider_type == "mock":
         return MockOfflineProvider()
     else:

@@ -92,7 +92,10 @@ def openai_generate(provider, messages, schema, system_prompt):
     if not provider.api_key:
         raise RuntimeError('Missing OpenAI key')
     if not hasattr(provider, '_client'):
-        provider._client = OpenAI(api_key=provider.api_key, max_retries=0, timeout=60)
+        options = {'api_key': provider.api_key, 'max_retries': 0, 'timeout': 60}
+        if getattr(provider, 'base_url', None):
+            options['base_url'] = provider.base_url
+        provider._client = OpenAI(**options)
     options = dict(model=provider.model_name, messages=openai_messages(messages, system_prompt))
     if schema:
         options.update(tools=[{'type': 'function', 'function': tool} for tool in schema],

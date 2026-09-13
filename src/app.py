@@ -67,7 +67,7 @@ def run_react_agent(user_query: str, provider, mcp_server: MCPChargingServer, hi
     logs = []
     run_id = uuid.uuid4().hex
     origin = 'mock' if isinstance(provider, MockOfflineProvider) else (
-        'live_api' if provider.__class__.__name__ in ('GeminiProvider', 'OpenAIProvider') else 'test_double')
+        'live_api' if provider.__class__.__name__ in ('GeminiProvider', 'OpenAIProvider', 'OpenRouterProvider') else 'test_double')
     started = time.perf_counter()
     step = 0
     def record(kind, **fields):

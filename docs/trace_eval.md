@@ -1,8 +1,8 @@
 # 📊 BÁO CÁO THU HOẠCH NGHIỆM THU BÀI LAB 3 (BƯỚC 3 — SUBMISSION ARTIFACT)
 
-> **Họ và Tên Học viên:** [Điền Họ và Tên]  
-> **Mã Sinh Viên / Mã Học viên:** [Điền MSSV]  
-> **Chủ đề Lựa chọn:** Trợ lý Điều phối Tải và Kiểm tra Khả dụng Trạm Sạc VinFast (Đề tài Mở)
+> **Họ và Tên Học viên:** Nguyễn Nam Khánh<br>
+> **Mã Sinh Viên / Mã Học viên:** 2A202602568<br>
+> **Chủ đề Lựa chọn:** Trợ lý Điều phối Tải và Kiểm tra Khả dụng Trạm Sạc VinFast
 
 ---
 
